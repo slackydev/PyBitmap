@@ -1,4 +1,3 @@
-#!/usr/bin/python
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  Copyright (c) 2013 by Jarl Holta 
  
@@ -9,6 +8,7 @@
  
  See: http://www.gnu.org/licenses/
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
+
 import struct, sys, os
 from math import ceil
 import time as t
