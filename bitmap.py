@@ -1,4 +1,14 @@
 #!/usr/bin/python
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Copyright (c) 2013 by Jarl Holta 
+ 
+ PyBitmap is free software: You can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ See: http://www.gnu.org/licenses/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 import struct, sys, os
 from math import ceil
 import time as t
@@ -70,14 +80,13 @@ class Bitmap(object):
     for y in range(self.ht):
       col = []
       for x in range(self.wd):
-        col.append(rawpix[count:count+3]);
+        col.append(rawpix[count:count+3])
         count += 3
       count += offset;
       self.pixels.append(col)
 
     self.pixels.reverse()
-    self.initalized = True;
-    rawpix = "";
+    self.initalized = True
 
   # Save the bitmap
   def save(self, filename):
@@ -85,8 +94,8 @@ class Bitmap(object):
       pix = []
       padding = row_padding(self.wd, self.depth)
       for i in reversed(self.pixels):
-        pix.append("".join(i));
-        pix.append(padding);
+        pix.append("".join(i))
+        pix.append(padding)
 
       header = self._writeBitMap()
       F = open(filename, 'wb')
@@ -98,12 +107,12 @@ class Bitmap(object):
   # Appending packed color to list is quicker then appending a tuple
   def setPixel(self, (x,y), c):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      self.pixels[y][x] = pack_color(c[0], c[1], c[2]);
+      self.pixels[y][x] = pack_color(c[0], c[1], c[2])
 
   # Get color of pixel(x,y)
   def getPixel(self, x,y):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      return struct.unpack('<BBB', self.pixels[y][x]);
+      return struct.unpack('<BBB', self.pixels[y][x])
 
   def GetPixels(arr):
     pass
