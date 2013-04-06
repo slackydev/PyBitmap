@@ -11,10 +11,11 @@
 
 import struct, sys, os
 from math import ceil
-import time as t
 
 HEX  = '0123456789abcdef';
 HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
+
+# Compression types:
 CTYPES = {0: "BI_RGB", 1: "BI_RLE8", 2: "BI_RLE4", 3: "BI_BITFIELDS", 4: "BI_JPEG", 5: "BI_PNG"}
 
 
@@ -57,7 +58,7 @@ class Bitmap(object):
   def create(self, width, height, bkgd=(255,255,255)): 
     self.wd = int(ceil(width));
     self.ht = int(ceil(height));
-    bkgd = pack_color(bkgd[0],bkgd[1],bkgd[2])
+    bkgd = pack_color(bkgd[2],bkgd[1],bkgd[0])
     for row in range(0,self.ht):
       self.pixels.append([bkgd] * self.wd)
 
@@ -80,13 +81,14 @@ class Bitmap(object):
     for y in range(self.ht):
       col = []
       for x in range(self.wd):
-        col.append(rawpix[count:count+3])
+        col.append(rawpix[count:count+3]);
         count += 3
       count += offset;
       self.pixels.append(col)
 
     self.pixels.reverse()
-    self.initalized = True
+    self.initalized = True;
+    rawpix = "";
 
   # Save the bitmap
   def save(self, filename):
@@ -94,8 +96,8 @@ class Bitmap(object):
       pix = []
       padding = row_padding(self.wd, self.depth)
       for i in reversed(self.pixels):
-        pix.append("".join(i))
-        pix.append(padding)
+        pix.append("".join(i));
+        pix.append(padding);
 
       header = self._writeBitMap()
       F = open(filename, 'wb')
@@ -107,12 +109,12 @@ class Bitmap(object):
   # Appending packed color to list is quicker then appending a tuple
   def setPixel(self, (x,y), c):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      self.pixels[y][x] = pack_color(c[0], c[1], c[2])
+      self.pixels[y][x] = pack_color(c[2], c[1], c[0])
 
   # Get color of pixel(x,y)
   def getPixel(self, x,y):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      return struct.unpack('<BBB', self.pixels[y][x])
+      return struct.unpack('<BBB', self.pixels[y][x])[::-1]
 
   def GetPixels(arr):
     pass
@@ -215,14 +217,11 @@ class Bitmap(object):
 if __name__ == '__main__':
   
   bmp = Bitmap()
-  bmp.create(1000, 1000, (20,100,240))
+  bmp.create(1000, 1000, bkgd=(20,100,240))
   #bmp.open("test.bmp")
 
   W,H = bmp.size();
-  tx = t.time()
-  for x in range(W):
-    for y in range(H):
-      o = bmp.getPixel(x,y) #bmp.setPixel((x,y), bmp.getPixel(x,y));
-  print "Time used: %f sec" % (t.time()-tx)
+  bmp.setPixel((0,0), (10,250,30))
+  print bmp.getPixel(0,0)
 
-  bmp.save('test.bmp')
+  #bmp.save('test.bmp')
