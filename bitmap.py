@@ -8,7 +8,6 @@
  
  See: http://www.gnu.org/licenses/
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
-
 import struct, sys, os
 from math import ceil
 
@@ -39,11 +38,6 @@ def row_padding(width, colordepth):
 def pack_RGB(r, g, b):
   '''Accepts bytes: 0-255. Returns a packed string'''
   return struct.pack('<BBB',b,g,r)
-  
-def pack_RGBA(r,g,b,a):
-  '''Accepts bytes: 0-255. Returns a packed string'''
-  return struct.pack('<BBBB',b,g,r,a)
-
 
 # Pack the HEX-color - Not used ATM
 def pack_hex_color(hex_color):
@@ -133,6 +127,8 @@ def _loadFromSource(filename):
   # Return whatever we need for later abuse
   return (width,height,depth,rawpixels);
 
+  
+# Create a bitmap from raw pixel materia, size, and bpp
 def _fromRaw(rawpix, size, depth, reverse=True):
   length = depth/8
   if length == 0: length = 1;
@@ -169,16 +165,15 @@ class Bitmap(object):
 
 
   # Create a new bitmap of the given size and background color
-  def create(self, width, height, mode='RGB', bkgd=(255,255,255,255)): 
+  def create(self, width, height, mode='RGB', bkgd=(255,255,255)): 
     if (mode not in MODE2BIT):
       raise SyntaxError("Unknown mode '%s'. Allowed modes: '1', 'P', 'RGB' or 'RGBA'" % mode)
     self.depth = MODE2BIT[mode]
     self.wd = int(ceil(width))
     self.ht = int(ceil(height))
     
-    if mode == 'RGBA':       bkgd = pack_RGBA(bkgd[0],bkgd[1],bkgd[2],bkgd[3])
-    elif mode == 'RGB':      bkgd = pack_RGB(bkgd[0],bkgd[1],bkgd[2])
-    elif mode == 'L' or '1': bkgd = struct.pack('<B', bkgd)
+    if mode == 'P' or mode == '1': bkgd = struct.pack('<B', bkgd)
+    else: bkgd = pack_RGB(bkgd[0],bkgd[1],bkgd[2])
     
     for row in range(0,self.ht):
       self.pixels.append([bkgd] * self.wd)
@@ -220,7 +215,7 @@ class Bitmap(object):
         pix.append("".join(i));
         pix.append(padding);
 
-      header = _constructHeader(self.wd,self.ht,self.depth)
+      header = _constructHeader(self.wd, self.ht, self.depth)
       F = open(filename, 'wb')
       F.write(header + "".join(pix))
       F.close()
@@ -230,18 +225,16 @@ class Bitmap(object):
   # Appending packed color to list is quicker then appending a tuple
   def setPixel(self, (x,y), c):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      if self.depth == 32: packed = pack_RGBA(c[0],c[1],c[2],c[3])
-      elif self.depth == 24: packed = pack_RGB(c[0],c[1],c[2])
-      else: packed = struct.pack('<B', c)
-      
-      self.pixels[y][x] = packed
+      if self.depth == 8: pixel = struct.pack('<B', c)
+      else: pixel = pack_RGB(c[0], c[1], c[2])
+      self.pixels[y][x] = pixel
 
   # Get color of pixel(x,y)
   def getPixel(self, x,y):
     if 0 < self.wd >= x and 0 < self.ht >= y:
       bitstring = BIT2MODE[self.depth][1];
-      if bitstring=='<B': return struct.unpack('<B', self.pixels[y][x])[0]
-      return struct.unpack(bitstring, self.pixels[y][x])
+      if self.depth == 8: return struct.unpack('<B', self.pixels[y][x])[0]
+      return struct.unpack('<BBB', self.pixels[y][x])
 
   def GetPixels(arr):
     pass
