@@ -9,16 +9,18 @@
  See: http://www.gnu.org/licenses/
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
-#!/usr/bin/python
 import struct, sys, os
 from math import ceil
-import time as t
 
 HEX  = '0123456789abcdef';
 HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
 
 # Compression types:
 CTYPES = {0: "BI_RGB", 1: "BI_RLE8", 2: "BI_RLE4", 3: "BI_BITFIELDS", 4: "BI_JPEG", 5: "BI_PNG"}
+
+# mode => bits and vice versa
+MODE2BIT = { "1":1, "P":8, "RGB":24, "RGBA":32 }
+BIT2MODE = { 1:("1",'<B'), 8:("P",'<B'), 24:("RGB",'<BBB'), 32:("RGBA",'<BBBB')}
 
 
 # Create the padding for each row (bmp requires this).
@@ -34,9 +36,13 @@ def row_padding(width, colordepth):
 
 
 # Pack the color
-def pack_color(red, green, blue):
+def pack_RGB(r, g, b):
   '''Accepts bytes: 0-255. Returns a packed string'''
-  return struct.pack('<BBB',blue,green,red)[::-1]
+  return struct.pack('<BBB',b,g,r)
+  
+def pack_RGBA(r,g,b,a):
+  '''Accepts bytes: 0-255. Returns a packed string'''
+  return struct.pack('<BBBB',b,g,r,a)
 
 
 # Pack the HEX-color - Not used ATM
@@ -44,7 +50,7 @@ def pack_hex_color(hex_color):
   '''pack with HEX? IE: 'AA6600'. Returns a packed string'''
   hex_color = hex_color.lower()
   r,g,b = (HEX2[hex_color[0:2]], HEX2[hex_color[2:4]], HEX2[hex_color[4:6]])
-  return pack_color(r, g, b)
+  return pack_RGB(r, g, b)
 
   
 # Writing the binary bitmap before saving
@@ -127,6 +133,30 @@ def _loadFromSource(filename):
   # Return whatever we need for later abuse
   return (width,height,depth,rawpixels);
 
+def _fromRaw(rawpix, size, depth, reverse=True):
+    length = depth/8
+    if length == 0: length = 1;
+    byte_length = size[0]*length
+    offset = (4-byte_length) % 4
+
+    if depth == 32: count = 0;
+    else: count = 1;
+    if depth<=8: colors = 1;
+    else: colors = 3;
+    
+    pixels = []
+    for y in xrange(size[1]):
+      col = []
+      count += offset;
+      for x in xrange(size[0]):
+        col.append(rawpix[count:count+colors])
+        count += length
+      pixels.append(col)
+      
+    if reverse == True: pixels.reverse()
+    
+    return pixels
+    
 
 class Bitmap(object):
   def __init__(self):
@@ -137,47 +167,50 @@ class Bitmap(object):
     self.initalized = False;
 
 
-  # Create a new bitmap of the given size and color
-  def create(self, width, height, bkgd=(255,255,255)): 
-    self.wd = int(ceil(width));
-    self.ht = int(ceil(height));
-    bkgd = pack_color(bkgd[2],bkgd[1],bkgd[0])
+  # Create a new bitmap of the given size and background color
+  def create(self, width, height, mode='RGB', bkgd=(255,255,255,255)): 
+    if (mode not in MODE2BIT):
+      raise SyntaxError("Unknown mode '%s'. Allowed modes: '1', 'P', 'RGB' or 'RGBA'" % mode)
+    self.depth = MODE2BIT[mode]
+    self.wd = int(ceil(width))
+    self.ht = int(ceil(height))
+    
+    if mode == 'RGBA':       bkgd = pack_RGBA(bkgd[0],bkgd[1],bkgd[2],bkgd[3])
+    elif mode == 'RGB':      bkgd = pack_RGB(bkgd[0],bkgd[1],bkgd[2])
+    elif mode == 'L' or '1': bkgd = struct.pack('<B', bkgd)
+    
     for row in range(0,self.ht):
       self.pixels.append([bkgd] * self.wd)
 
     self.initalized = True; 
+  
+  
+  # Create a bitmap from raw bitmap meteria
+  # EG: A windows buffer bitmap
+  def fromBuffer(self, rawpix, size, depth=24, reverse=False):
+    self.wd = size[0]
+    self.ht = size[1]
+    
+    self.pixels = _fromRaw(rawpix, size, depth, reverse)
+    self.initalized = True
 
-
+    
   # Open a bitmap using function: _loadFromSource
   def open(self, filename):
     if not(os.path.exists(filename)):
       raise IOError("File '%s' does not exist" % filename)
-    if not(24 <= self.depth <= 32):
-      raise SyntaxError("Not 24 or 32 bpp bitmap")
 
     bmp = _loadFromSource(filename)
     self.wd = bmp[0];
     self.ht = bmp[1];
     self.depth = bmp[2];
     rawpix = bmp[3];
+    
+    self.pixels = _fromRaw(rawpix, (self.wd,self.ht), self.depth, True)
+    self.initalized = True
 
-    byte_length = self.wd*self.depth/8
-    offset = (4-byte_length) % 4
-
-    count = 4;
-    for y in range(self.ht):
-      col = []
-      for x in range(self.wd):
-        col.append(rawpix[count:count+3]);
-        count += 3
-      count += offset;
-      self.pixels.append(col)
-
-    self.pixels.reverse()
-    self.initalized = True;
-    rawpix = "";
-
-  # Save the bitmap
+    
+  # Save the bitmap to any location on the computer
   def save(self, filename):
     if self.initalized:
       pix = []
@@ -196,12 +229,18 @@ class Bitmap(object):
   # Appending packed color to list is quicker then appending a tuple
   def setPixel(self, (x,y), c):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      self.pixels[y][x] = pack_color(c[2], c[1], c[0])
+      if self.depth == 32: packed = pack_RGBA(c[0],c[1],c[2],c[3])
+      elif self.depth == 24: packed = pack_RGB(c[0],c[1],c[2])
+      else: packed = struct.pack('<B', c)
+      
+      self.pixels[y][x] = packed
 
   # Get color of pixel(x,y)
   def getPixel(self, x,y):
     if 0 < self.wd >= x and 0 < self.ht >= y:
-      return struct.unpack('<BBB', self.pixels[y][x])[::-1]
+      bitstring = BIT2MODE[self.depth][1];
+      if bitstring=='<B': return struct.unpack('<B', self.pixels[y][x])[0]
+      return struct.unpack(bitstring, self.pixels[y][x])
 
   def GetPixels(arr):
     pass
@@ -217,9 +256,8 @@ class Bitmap(object):
 
 # Now lets test it! :D
 if __name__ == '__main__':
-
   bmp = Bitmap()
-  bmp.create(1000, 1000, bkgd=(20,100,240))
+  bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
   #bmp.open("test.bmp")
 
   W,H = bmp.size();
