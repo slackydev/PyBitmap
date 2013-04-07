@@ -242,7 +242,7 @@ class Bitmap(object):
     if 0 < self.wd >= x and 0 < self.ht >= y:
       bitstring = BIT2MODE[self.depth][1];
       if bitstring=='<B': return struct.unpack('<B', self.pixels[y][x])[0]
-      return struct.unpack(bitstring, self.pixels[y][x])
+      return struct.unpack(bitstring, self.pixels[y][x])[::-1]
 
   def GetPixels(arr):
     pass
@@ -259,11 +259,11 @@ class Bitmap(object):
 # Now lets test it!
 if __name__ == '__main__':
   bmp = Bitmap()
-  bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
+  bmp.create(600, 600, 'RGB', bkgd=(20,100,240))
   #bmp.open("test.bmp")
 
   W,H = bmp.size();
-  bmp.setPixel((0,0), (10,250,30))
-  print bmp.getPixel(0,0)
+  bmp.setPixel((50,50), (10,250,30))
+  print bmp.getPixel(50,50)
 
   bmp.save('test.bmp')
