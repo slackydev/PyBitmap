@@ -160,7 +160,7 @@ class Bitmap(object):
     self.ht = bmp[1];
     self.depth = bmp[2];
     rawpix = bmp[3];
-    print "still alive"
+
     byte_length = self.wd*self.depth/8
     offset = (4-byte_length) % 4
 
