@@ -50,17 +50,17 @@ def pack_hex_color(hex_color):
 # Writing the binary bitmap before saving
 def _constructHeader(W,H,BPP):
   header = "BM"
-  header += struct.pack('<L', 54+256*4+W*H)       # DWORD size in bytes of the file
+  header += struct.pack('<L', 54+256*4+W*H)       # DWORD size in bytes
   header += struct.pack('<H', 0)                  # WORD 0
   header += struct.pack('<H', 0)                  # WORD 0
-  header += struct.pack('<L', 54)                 # DWORD offset to the data
+  header += struct.pack('<L', 54)                 # DWORD offset..
   header += struct.pack('<L', 40)                 # DWORD header size = 40
   header += struct.pack('<L', W)                  # DWORD image width
   header += struct.pack('<L', H)                  # DWORD image height
   header += struct.pack('<H', 1)                  # WORD planes = 1
   header += struct.pack('<H', BPP)                # WORD bits per pixel
   header += struct.pack('<L', 0)                  # DWORD compression = 0
-  header += struct.pack('<L', W * H)              # DWORD sizeimage = size in bytes of the bitmap = width * height 
+  header += struct.pack('<L', W * H)              # DWORD sizeImage = W*H
   header += struct.pack('<L', 0)                  # DWORD horiz pixels per meter (?)
   header += struct.pack('<L', 0)                  # DWORD ver pixels per meter (?)
   header += struct.pack('<L', 0)                  # DWORD number of colors used = (?)
