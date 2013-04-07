@@ -133,33 +133,32 @@ def _loadFromSource(filename):
   # Return whatever we need for later abuse
   return (width,height,depth,rawpixels);
 
-
-# Convert raw materia to a list of rawpixel-colors for easy access.
 def _fromRaw(rawpix, size, depth, reverse=True):
-    length = depth/8
-    if length == 0: length = 1;
-    byte_length = size[0]*length
-    offset = (4-byte_length) % 4
+  length = depth/8
+  if length == 0: length = 1;
+  byte_length = size[0]*length
+  offset = (4-byte_length) % 4
 
-    if depth == 32: count = 0;
-    else: count = 1;
-    if depth<=8: colors = 1;
-    else: colors = 3;
+  if depth == 32: count = 0;
+  else: count = 1;
+  if depth<=8: colors = 1;
+  else: colors = 3;
     
-    pixels = []
-    for y in xrange(size[1]):
-      col = []
-      count += offset;
-      for x in xrange(size[0]):
-        col.append(rawpix[count:count+colors])
-        count += length
-      pixels.append(col)
+  pixels = []
+  for y in xrange(size[1]):
+    col = []
+    count += offset;
+    for x in xrange(size[0]):
+      col.append(rawpix[count:count+colors])
+      count += length
+    pixels.append(col)
       
-    if reverse == True: pixels.reverse()
-    
-    return pixels
+  if reverse == True: pixels.reverse()   
+  return pixels
     
 
+# The class that lates you work with bitmaps
+#  
 class Bitmap(object):
   def __init__(self):
     self.wd = 0;
@@ -242,7 +241,7 @@ class Bitmap(object):
     if 0 < self.wd >= x and 0 < self.ht >= y:
       bitstring = BIT2MODE[self.depth][1];
       if bitstring=='<B': return struct.unpack('<B', self.pixels[y][x])[0]
-      return struct.unpack(bitstring, self.pixels[y][x])[::-1]
+      return struct.unpack(bitstring, self.pixels[y][x])
 
   def GetPixels(arr):
     pass
@@ -256,14 +255,14 @@ class Bitmap(object):
   def height(self): return self.ht;
 
 
-# Now lets test it!
+# Take it for a spin..!
 if __name__ == '__main__':
   bmp = Bitmap()
-  bmp.create(600, 600, 'RGB', bkgd=(20,100,240))
+  bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
   #bmp.open("test.bmp")
 
   W,H = bmp.size();
-  bmp.setPixel((50,50), (10,250,30))
-  print bmp.getPixel(50,50)
+  bmp.setPixel((0,0), (10,250,30))
+  print bmp.getPixel(0,0)
 
   bmp.save('test.bmp')
