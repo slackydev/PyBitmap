@@ -234,7 +234,7 @@ class Bitmap(object):
     if 0 < self.wd >= x and 0 < self.ht >= y:
       bitstring = BIT2MODE[self.depth][1];
       if self.depth == 8: return struct.unpack('<B', self.pixels[y][x])[0]
-      return struct.unpack('<BBB', self.pixels[y][x])
+      return struct.unpack('<BBB', self.pixels[y][x])[::-1]
 
   def GetPixels(arr):
     pass
