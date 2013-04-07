@@ -133,6 +133,8 @@ def _loadFromSource(filename):
   # Return whatever we need for later abuse
   return (width,height,depth,rawpixels);
 
+
+# Convert raw materia to a list of rawpixel-colors for easy access.
 def _fromRaw(rawpix, size, depth, reverse=True):
     length = depth/8
     if length == 0: length = 1;
@@ -254,7 +256,7 @@ class Bitmap(object):
   def height(self): return self.ht;
 
 
-# Now lets test it! :D
+# Now lets test it!
 if __name__ == '__main__':
   bmp = Bitmap()
   bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
