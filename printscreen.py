@@ -1,51 +1,96 @@
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- This is a placeholder file, taking printscreen with it only works with 
- third party module: pywin32, therefor also only works on Windows.
+ Only written if for windows as it's now, but I might just take a 
+ look at some standard linux API's / Frameworks. 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
-from bitmap import Bitmap
-import win32gui,  win32ui,  win32con
+from bmplib import Bitmap
+import ctypes
+from ctypes.wintypes import HGDIOBJ
 
-def prtScn(hwnd=False):
-    if not hwnd: hwnd = win32gui.GetDesktopWindow()
+user32 = ctypes.windll.user32       
+gdi32 = ctypes.windll.gdi32
 
-    SX,SY,EX,EY = win32gui.GetWindowRect(hwnd)
-    W,H = EX-SX, EY-SY
+SRCCOPY = 13369376
+BOOL    = ctypes.c_bool
+INT   = ctypes.c_int
+LONG    = ctypes.c_long
+WORD    = ctypes.c_ushort
+LPVOID  = ctypes.c_void_p
+Structure = ctypes.Structure
 
-    wDC = win32gui.GetWindowDC(hwnd)
-    dcObj = win32ui.CreateDCFromHandle(wDC)
-    cDC = dcObj.CreateCompatibleDC()
+LPLONG = ctypes.POINTER(LONG)
 
-    bmp = win32ui.CreateBitmap()
-    bmp.CreateCompatibleBitmap(dcObj, W, H)
-    cDC.SelectObject(bmp)
-    cDC.BitBlt((0, 0), (W,H), dcObj, (0,0), win32con.SRCCOPY)
+class BITMAP(Structure):
+    _fields_ = [
+        ("bmType",          LONG),
+        ("bmWidth",         LONG),
+        ("bmHeight",        LONG),
+        ("bmWidthBytes",    LONG),
+        ("bmPlanes",        WORD),
+        ("bmBitsPixel",     WORD),
+        ("bmBits",          LPVOID),
+    ]
+
+
+def GetObject(hgdiobj, cbBuffer = None, lpvObject = None):
+    _GetObject = gdi32.GetObjectA
+    _GetObject.argtypes = [HGDIOBJ, INT, LPVOID]
+    _GetObject.restype  = INT
+
+    if cbBuffer is not None:
+        if lpvObject is None:
+            lpvObject = ctypes.create_string_buffer("", cbBuffer)
+    elif lpvObject is not None:
+        cbBuffer = ctypes.sizeof(lpvObject)
+    else:
+       cbBuffer  = ctypes.sizeof(BITMAP)
+       lpvObject = BITMAP()
+    _GetObject(hgdiobj, cbBuffer, ctypes.byref(lpvObject))
+    return lpvObject
+
+def GetBitmapBits(hbmp):
+    _GetBitmapBits = gdi32.GetBitmapBits
+    _GetBitmapBits.argtypes = [HGDIOBJ, LONG, LPVOID]
+    _GetBitmapBits.restype  = LONG
+
+    bitmap   = GetObject(hbmp, lpvObject = BITMAP())
+    cbBuffer = bitmap.bmWidthBytes * bitmap.bmHeight
+    lpvBits  = ctypes.create_string_buffer("", cbBuffer)
+    _GetBitmapBits(hbmp, cbBuffer, ctypes.byref(lpvBits))
+    return lpvBits.raw
+
+    
+def screenBuffer(hwnd=False):
+    user32.GetDesktopWindow.argtypes = []
+    user32.GetWindowRect.argtypes = [LONG,LPLONG]
+    user32.GetWindowDC.argtypes = [LONG]
+    gdi32.CreateCompatibleDC.argtypes = [LONG]
+    gdi32.CreateCompatibleBitmap.argtypes = [LONG, LONG, LONG]
+    gdi32.SelectObject.argtypes = [LONG, LONG]
+    gdi32.BitBlt.argtypes = [LONG, LONG,LONG,LONG,LONG, LONG,LONG,LONG,LONG]
+    
+    if not hwnd: hwnd = user32.GetDesktopWindow()
+    hwnd = ctypes.c_long(hwnd)
+    
+    rect = (ctypes.c_int*4)()
+    user32.GetWindowRect(hwnd, rect)
+    W,H = rect[2]-rect[0], rect[3]-rect[1]
+
+    winDC = user32.GetWindowDC(hwnd)
+    cDC = gdi32.CreateCompatibleDC(winDC)
+    bmp = gdi32.CreateCompatibleBitmap(winDC, W, H)
+    gdi32.SelectObject(cDC, bmp)
+    gdi32.BitBlt(cDC, 0,0, W,H, winDC, 0,0, SRCCOPY)
   
     # Image from bitmapbuffer
-    bmpinfo = bmp.GetInfo()
-    rawbmp = bmp.GetBitmapBits(True)
-
-    BMP = Bitmap();
-    BMP.fromBuffer(rawbmp, (bmpinfo['bmWidth'], bmpinfo['bmHeight']), 32)
+    raw = ''
+    rawbmp = GetBitmapBits(bmp)
         
-    # Destroy all objects!
-    dcObj.DeleteDC(); 
-    cDC.DeleteDC(); 
-    win32gui.ReleaseDC(hwnd, wDC)
-    win32gui.DeleteObject(bmp.GetHandle())
-
-    #return image
-    return BMP
-
-
-if __name__ == '__main__':
-  bmp = prtScn()
-  #bmp = Bitmap()
-  #bmp.open('sub.bmp')
-  #bmp.create(1000, 1000, 'P', bkgd=90)
-
-  bmp.setPixel((10,10),(255,0,0))
-  bmp.setPixel((11,10),(0,0,0))
-  bmp.setPixel((12,10),(0,0,0))
-  print bmp.getPixel(10,10)
-  
-  bmp.save('test.bmp')
+    #Destroy all objects!
+    gdi32.DeleteObject(gdi32.SelectObject(cDC, bmp))
+    gdi32.DeleteDC(cDC);
+    user32.ReleaseDC(hwnd, winDC)
+    
+    # Returns a raw buffer that can be used by
+    # Bitmaps().fromBuffer(raw, size, 32, False)
+    # If I were to guess, it would work with PIL as well.
+    return (rawbmp, (W, H))
