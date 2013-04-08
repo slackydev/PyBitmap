@@ -35,15 +35,7 @@ def GetObject(hgdiobj, cbBuffer = None, lpvObject = None):
     _GetObject = gdi32.GetObjectA
     _GetObject.argtypes = [HGDIOBJ, INT, LPVOID]
     _GetObject.restype  = INT
-
-    if cbBuffer is not None:
-        if lpvObject is None:
-            lpvObject = ctypes.create_string_buffer("", cbBuffer)
-    elif lpvObject is not None:
-        cbBuffer = ctypes.sizeof(lpvObject)
-    else:
-       cbBuffer  = ctypes.sizeof(BITMAP)
-       lpvObject = BITMAP()
+    cbBuffer = ctypes.sizeof(lpvObject)
     _GetObject(hgdiobj, cbBuffer, ctypes.byref(lpvObject))
     return lpvObject
 
