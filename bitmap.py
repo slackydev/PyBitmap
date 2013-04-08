@@ -217,13 +217,13 @@ class Bitmap(object):
 
       
   # writeDate() allows you to store the colordata after modification 
-  # in to our "real" pixelmap so it can later be used by getPixel()
-  def writeDate(self):
+  # in to our "real" pixelmap so it can later be used by getPixel(), or saved.
+  def writeData(self):
     if self.initalized:
       self.rawpix = self.pixels.tostring()
 
   # discardData() allows you to remove the modification made by setPixel() 
-  # This way you will be able to avoid mistakes, and we just really need this.
+  # This way you will be able to avoid mistakes... and we just really need this.
   def dropData():
     if self.initalized:
       self.pixels = array('c', self.rawpix)
