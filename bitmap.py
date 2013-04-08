@@ -271,7 +271,10 @@ if __name__ == '__main__':
   bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
   #bmp.open("test.bmp")
   
+  #One million iterations with set and GetPixel
   W,H = bmp.size()
   for x in range(W):
-    for y in range(H)
+    for y in range(H):
         bmp.setPixel((0,0), bmp.getPixel(0,0))
+  bmp.writeData
+  bmp.save('test.bmp')
