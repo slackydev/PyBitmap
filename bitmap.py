@@ -7,8 +7,7 @@
  (at your option) any later version.
  - See: http://www.gnu.org/licenses/
  
- This modul only takes 24bit BMPs as it's now. Also, it's compatible with 
- CPython but the speed is not optimized for CPython. PyPy works GREAT!!
+ This modul only takes 24bit BMPs as it's now.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 import struct, sys, os
 from array import array
@@ -216,14 +215,14 @@ class Bitmap(object):
       F.close()
 
       
-  # writeDate() allows you to store the colordata after modification 
-  # in to our "real" pixelmap so it can later be used by getPixel(), or saved.
+  # writeData() allows you to store the colordata after modification 
+  # in to our "real" pixelmap so it can later be used by getPixel()
   def writeData(self):
     if self.initalized:
       self.rawpix = self.pixels.tostring()
 
   # discardData() allows you to remove the modification made by setPixel() 
-  # This way you will be able to avoid mistakes... and we just really need this.
+  # This way you will be able to avoid mistakes, and we just really need this.
   def dropData():
     if self.initalized:
       self.pixels = array('c', self.rawpix)
@@ -261,8 +260,9 @@ class Bitmap(object):
   
   # I do not see why.. but okay. Let's just...
   def free(self):
-    self.pixels = ''
-    self.rawpix = ''
+    W = H = -1
+    self.initalized = False
+    self.pixels = self.rawpix = ''
     gc.collect()
 
 # Take it for a spin..!
@@ -270,9 +270,8 @@ if __name__ == '__main__':
   bmp = Bitmap()
   bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
   #bmp.open("test.bmp")
-
-  W,H = bmp.size();
-  bmp.setPixel((0,0), (10,250,30))
-  print bmp.getPixel(0,0)
-
-  bmp.save('test.bmp')
+  
+  W,H = bmp.size()
+  for x in range(W):
+    for y in range(H)
+        bmp.setPixel((0,0), bmp.getPixel(0,0))
