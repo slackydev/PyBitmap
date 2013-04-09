@@ -1,6 +1,7 @@
 PyBitmap
 ========
 
-A very simple library to create an work with windows bitmaps (bmp). 
+A very simple library to create an work with bitmaps (bmp-fileextension). 
 
-It is tested with PyPy 2.x and Python 2.7 - Should work with any later interpretor as well.
+It is written for PyPy but is compatibe with CPython even tho the 
+speed when running in CPython in this case is garbage.
