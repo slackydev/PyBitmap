@@ -2,7 +2,7 @@
  Only written if for windows as it's now, but I might just take a 
  look at some standard linux API's / Frameworks. 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
-from bmplib import Bitmap
+from bitmap import Bitmap
 import ctypes
 from ctypes.wintypes import HGDIOBJ
 
