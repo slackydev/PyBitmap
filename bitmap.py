@@ -7,6 +7,9 @@
  (at your option) any later version.
  - See: http://www.gnu.org/licenses/
  
+ PyBitmap is written for PyPy but is compatibe with CPython but the 
+ speed when running in CPython in this case is garbage.
+ 
  This modul only takes 24bit (32bit might WORK) BMPs as it's now.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 import struct, sys, os
