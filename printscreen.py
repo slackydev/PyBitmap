@@ -2,7 +2,7 @@
  Only written if for windows as it's now, but I might just take a 
  look at some standard linux API's / Frameworks. 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
-from bitmap import Bitmap
+from bmplib import Bitmap
 import ctypes
 from ctypes.wintypes import HGDIOBJ
 
@@ -11,13 +11,12 @@ gdi32 = ctypes.windll.gdi32
 
 SRCCOPY = 13369376
 BOOL    = ctypes.c_bool
-INT   = ctypes.c_int
+INT     = ctypes.c_int
 LONG    = ctypes.c_long
 WORD    = ctypes.c_ushort
 LPVOID  = ctypes.c_void_p
+LPLONG  = ctypes.POINTER(LONG)
 Structure = ctypes.Structure
-
-LPLONG = ctypes.POINTER(LONG)
 
 class BITMAP(Structure):
     _fields_ = [
@@ -59,6 +58,9 @@ def screenBuffer(hwnd=False):
     gdi32.CreateCompatibleBitmap.argtypes = [LONG, LONG, LONG]
     gdi32.SelectObject.argtypes = [LONG, LONG]
     gdi32.BitBlt.argtypes = [LONG, LONG,LONG,LONG,LONG, LONG,LONG,LONG,LONG]
+    gdi32.DeleteObject.argtypes = [LONG]
+    gdi32.DeleteDC.argtypes = [LONG]
+    user32.ReleaseDC.argtypes = [LONG, LONG]
     
     if not hwnd: hwnd = user32.GetDesktopWindow()
     hwnd = ctypes.c_long(hwnd)
