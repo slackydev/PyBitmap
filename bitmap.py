@@ -26,8 +26,9 @@ HEX  = '0123456789abcdef';
 HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
 
 # Create the padding for each row (bmp requires this).
+# Returns any necessary row padding
 def row_padding(width, colordepth):
-  '''returns any necessary row padding'''
+  
   byte_length = width*colordepth/8
   padding = (4-byte_length) % 4
   padbytes = ''
@@ -37,25 +38,25 @@ def row_padding(width, colordepth):
   return padbytes
 
 
-# Pack the color
+# Accepts bytes: 0-255. Returns a packed string
 def pack_RGB(r, g, b):
-  '''Accepts bytes: 0-255. Returns a packed string'''
   return struct.pack('<BBB',b,g,r)
 
-# Pack the HEX-color - Not used ATM
+# Pack with HEX? IE: 'AA6600'. Returns a packed string
+# This is unused right now.
 def pack_hex_color(hex_color):
-  '''pack with HEX? IE: 'AA6600'. Returns a packed string'''
   hex_color = hex_color.lower()
   r,g,b = (HEX2[hex_color[0:2]], HEX2[hex_color[2:4]], HEX2[hex_color[4:6]])
   return pack_RGB(r, g, b)
 
   
-# Writing the binary bitmap before saving
+# Writing the binary bitmap header before saving
+# Windows Version 3 DIB Header specification
 def _constructHeader(W,H,BPP):
   header = "BM"
   header += struct.pack('<L', 54+256*4+W*H)       # DWORD size in bytes of the file
-  header += struct.pack('<H', 0)                  # WORD 0
-  header += struct.pack('<H', 0)                  # WORD 0
+  header += struct.pack('<H', 2)                  # WORD Reserved1
+  header += struct.pack('<H', 2)                  # WORD Reserved2
   header += struct.pack('<L', 54)                 # DWORD offset to the data
   header += struct.pack('<L', 40)                 # DWORD header size = 40
   header += struct.pack('<L', W)                  # DWORD image width
@@ -64,68 +65,67 @@ def _constructHeader(W,H,BPP):
   header += struct.pack('<H', BPP)                # WORD bits per pixel
   header += struct.pack('<L', 0)                  # DWORD compression = 0
   header += struct.pack('<L', W * H)              # DWORD sizeimage = size in bytes of the bitmap = width * height 
-  header += struct.pack('<L', 0)                  # DWORD horiz pixels per meter (?)
-  header += struct.pack('<L', 0)                  # DWORD ver pixels per meter (?)
+  header += struct.pack('<L', 0)                  # DWORD horizontal pixels per meter
+  header += struct.pack('<L', 0)                  # DWORD vertical pixels per meter
   header += struct.pack('<L', 0)                  # DWORD number of colors used = (?)
   header += struct.pack('<L', 0)                  # DWORD number of important colors
   return header;
 
   
 # Load a bitmap from a location on the computer
+# This might just need some work, as we are unable to load
+# every image correctly.
 def _loadFromSource(filename):
   f = open(filename)
-  b = f.read(2)                                               # Bitmap format
+  b = f.read(2)                                         # Bitmap format
   if not b in ["BM", "BA", "CI", "CP", "IC", "PT"]:
     raise SyntaxError("Not a BMP file")
-     
-  b = f.read(4)                                               # Shit
-  b = f.read(4)                                               # Shit
-  b = f.read(4)                                               # Shit
-  b = f.read(4)                                               # Header length
+  
+  # BITMAPFILEHEADER
+  b = f.read(4)                                         # File size
+  b = f.read(4)                                         # Reserved 1+2
+  b = f.read(4)                                         # Offset to PixelArray
+  #DIB Header...
+  b = f.read(4)                                         # Header size
   hdr_len = struct.unpack("<i", b)[0]
-    
-  # OS/2 1.0 core   
+  
+  # OS/2 1.0 Info   
   if hdr_len == 12:
-    b = f.read(2)                                             # Width
-    width = abs(struct.unpack("<i", b + "\x00\x00"))
-    b = f.read(2)                                             # Height
-    height = abs(struct.unpack("<i", b + "\x00\x00"))
-    b = f.read(2)                                             # Color planes
-    #planes = struct.unpack("<i", b + "\x00\x00")
-    b = f.read(2)                                             # BPP
-    depth = struct.unpack("<i", b + "\x00\x00")
-    compression = "BI_RGB"
-    hres = None
-    vres = None
-    colorcount = None
-    impcolors = None
-    
-  # WIN > 3.0 or OS/2 2.0 INFO
-  elif hdr_len == 40:
-    b = f.read(4)                                             # Width
-    width = abs(struct.unpack("<i", b)[0])
-    b = f.read(4)                                             # Height
-    height = abs(struct.unpack("<i", b)[0])
-    b = f.read(2)                                             # Color planes
-    #planes = struct.unpack("<i", b + "\x00\x00")[0]
-    b = f.read(2)                                             # BBP
+    b = f.read(2)                                       # Width
+    width = abs(struct.unpack("<i", b + "\x00\x00")[0])
+    b = f.read(2)                                       # Height
+    height = abs(struct.unpack("<i", b + "\x00\x00")[0])
+    b = f.read(2)                                       # Color planes
+    b = f.read(2)                                       # BPP
     depth = struct.unpack("<i", b + "\x00\x00")[0]
-    b = f.read(4)                                             # Compression type
+    compression = "BI_RGB"
+    
+  # WIN > 3.0 or OS/2 2.0 Info
+  elif hdr_len == 40:
+    b = f.read(4)                                       # Width
+    width = abs(struct.unpack("<i", b)[0])
+    b = f.read(4)                                       # Height
+    height = abs(struct.unpack("<i", b)[0])
+    b = f.read(2)                                       # Color planes
+    b = f.read(2)                                       # BBP
+    depth = struct.unpack("<i", b + "\x00\x00")[0]
+    b = f.read(4)                                       # Compression type
     try: compression = CTYPES[struct.unpack("<i", b)[0]]
     except: compression = "UNKNOWN"
-
     if compression != "BI_RGB":
       raise IOError("Unsupported BMP compression '%s'" % compression)
-
-    b = f.read(4)                                             # Hres
-    b = f.read(4)                                             # Vres
-    b = f.read(4)                                             # Number of palette colors
-    #colors = struct.unpack("<i", b)[0]
-    b = f.read(4)                                             # Number of important colors (generally unused)
-    b = f.read(4)                                             # I don't know why I had to add this.
-  else: raise IOError("Unsupported bitmap header format")
-    
-  rawpixels = f.read()                                        # The rest is pixel data
+      
+    b = f.read(4)                                       # Image size
+    b = f.read(4)                                       # Hrez = X Pixel per meter
+    b = f.read(4)                                       # Vrez = Y Pixel per meter
+    b = f.read(4)                                       # Num colors in color table
+    b = f.read(4)                                       # Num important colors (generally unused)
+ 
+  else:
+    raise IOError("Unsupported bitmap header format")
+  
+  # We assume the rest is pixeldata...
+  rawpixels = f.read()
   f.close()
   # Return whatever we need for later abuse
   return (width,height,depth,rawpixels);
@@ -143,7 +143,7 @@ def flipBitmap(rawpix, cols, rows, depth=24):
   return "".join(reversed(temp))
     
     
-# The class that lates you work with bitmaps
+# The class that lets you work with bitmaps
 #  
 class Bitmap(object):
   def __init__(self):
@@ -184,7 +184,7 @@ class Bitmap(object):
     self.wd = size[0]
     self.ht = size[1]
     self.depth = depth 
-    if not(reverse): self.rawpix = rawpix
+    if not reverse: self.rawpix = rawpix
     else: self.rawpix = flipBitmap(rawpix, self.wd, self.ht, self.depth)
     self.pixels = array('c', self.rawpix)
     self.bpr = len(self.pixels) / self.ht
@@ -231,7 +231,7 @@ class Bitmap(object):
   # Set color of pixel(x,y).
   # Appending packed color to array is quicker then appending to raw
   def setPixel(self, (x,y), c):
-    if 0 < self.wd >= x and 0 < self.ht >= y:
+    if 0 < self.wd > x and 0 < self.ht > y:
       pos = (y*self.bpr) + (x*3)
       pack = pack_RGB(c[0], c[1], c[2])
       self.pixels[pos] = pack[0]
@@ -241,18 +241,27 @@ class Bitmap(object):
 
   # Get color of pixel(x,y) - reading from rawdata
   def getPixel(self, x,y):
-    if 0 < self.wd >= x and 0 < self.ht >= y:
+    if 0 < self.wd > x and 0 < self.ht > y:
       pos = (y*self.bpr) + (x*3)
       b,g,r = struct.unpack('<BBB', self.rawpix[pos:pos+3])
       return r,g,b
+
       
+  # Get all the colors from each pixel given
+  def getPixels(self, seq):
+    return [self.getPixel(x,y) for (x,y) in seq]
 
-  def GetPixels(arr):
-    pass
-
-  def SetPixels(arr):
-    pass
-
+    
+  #Quick append color to a list of pixels  
+  def setPixels(self, seq, color, save=False):
+    pack = pack_RGB(color[0], color[1], color[2])
+    for (x,y) in seq: 
+      pos = (y*self.bpr) + (x*3)
+      self.pixels[pos] = pack[0]
+      self.pixels[pos+1] = pack[1]
+      self.pixels[pos+2] = pack[2]
+    if save: self.writeData()
+    
   # Stuff for getting dimensions
   def size(self): return (self.wd, self.ht);
   def width(self): return self.wd;
@@ -262,7 +271,8 @@ class Bitmap(object):
   def free(self):
     W = H = -1
     self.initalized = False
-    self.pixels = self.rawpix = ''
+    self.pixels = ''
+    self.rawpix = ''
     gc.collect()
 
 # Take it for a spin..!
@@ -271,10 +281,9 @@ if __name__ == '__main__':
   bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
   #bmp.open("test.bmp")
   
-  #One million iterations with set and GetPixel
   W,H = bmp.size()
   for x in range(W):
     for y in range(H):
         bmp.setPixel((0,0), bmp.getPixel(0,0))
-  bmp.writeData
+
   bmp.save('test.bmp')
