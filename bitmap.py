@@ -53,7 +53,6 @@ def pack_hex_color(hex_color):
 # Writing the binary bitmap header before saving
 # Windows Version 3 DIB Header specification
 def _constructHeader(W,H,BPP,size):
-  print "Incorrect: %d vs %d" % ((W*H*3), size)
   header = "BM"               
   header += struct.pack('<L', 54+(W*H*3))         # DWORD size in bytes of the file
   header += struct.pack('<H', 2)                  # WORD Reserved1
