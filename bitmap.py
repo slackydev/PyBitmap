@@ -7,7 +7,7 @@
  (at your option) any later version.
  - See: http://www.gnu.org/licenses/
  
- This modul only takes 24bit BMPs as it's now.
+ This modul only takes 24bit (32bit might WORK) BMPs as it's now.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 import struct, sys, os
 from array import array
@@ -52,9 +52,10 @@ def pack_hex_color(hex_color):
   
 # Writing the binary bitmap header before saving
 # Windows Version 3 DIB Header specification
-def _constructHeader(W,H,BPP):
-  header = "BM"
-  header += struct.pack('<L', 54+256*4+W*H)       # DWORD size in bytes of the file
+def _constructHeader(W,H,BPP,size):
+  print "Incorrect: %d vs %d" % ((W*H*3), size)
+  header = "BM"               
+  header += struct.pack('<L', 54+(W*H*3))         # DWORD size in bytes of the file
   header += struct.pack('<H', 2)                  # WORD Reserved1
   header += struct.pack('<H', 2)                  # WORD Reserved2
   header += struct.pack('<L', 54)                 # DWORD offset to the data
@@ -76,7 +77,8 @@ def _constructHeader(W,H,BPP):
 # This might just need some work, as we are unable to load
 # every image correctly.
 def _loadFromSource(filename):
-  f = open(filename)
+  f = open(filename, 'rb')
+
   b = f.read(2)                                         # Bitmap format
   if not b in ["BM", "BA", "CI", "CP", "IC", "PT"]:
     raise SyntaxError("Not a BMP file")
@@ -112,23 +114,28 @@ def _loadFromSource(filename):
     b = f.read(4)                                       # Compression type
     try: compression = CTYPES[struct.unpack("<i", b)[0]]
     except: compression = "UNKNOWN"
+    
+    # Just some error handeling
     if compression != "BI_RGB":
       raise IOError("Unsupported BMP compression '%s'" % compression)
+    if depth < 24:
+      raise IOError("Unsupported amount of BPP '%s'" % depth)
       
     b = f.read(4)                                       # Image size
     b = f.read(4)                                       # Hrez = X Pixel per meter
     b = f.read(4)                                       # Vrez = Y Pixel per meter
     b = f.read(4)                                       # Num colors in color table
     b = f.read(4)                                       # Num important colors (generally unused)
- 
+   
   else:
     raise IOError("Unsupported bitmap header format")
   
   # We assume the rest is pixeldata...
   rawpixels = f.read()
   f.close()
+  
   # Return whatever we need for later abuse
-  return (width,height,depth,rawpixels);
+  return (width,height,depth,rawpixels)
 
  
 # flipping the bitmapbuffer horizontal (cols, rows = W,H).
@@ -209,7 +216,7 @@ class Bitmap(object):
   # Save the bitmap to any location on the computer
   def save(self, filename):
     if self.initalized:
-      header = _constructHeader(self.wd, self.ht, self.depth)
+      header = _constructHeader(self.wd, self.ht, self.depth, len(self.rawpix))
       F = open(filename, 'wb')
       F.write(header + flipBitmap(self.rawpix, self.wd, self.ht, self.depth))
       F.close()
