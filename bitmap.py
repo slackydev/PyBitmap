@@ -14,7 +14,6 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 import struct, sys, os
 from array import array
-from math import ceil
 import gc
 
 # Compression types:
@@ -28,10 +27,9 @@ BIT2MODE = { 8:"L", 24:"RGB", 32:"RGBX"}
 HEX  = '0123456789abcdef';
 HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
 
-# Create the padding for each row (bmp requires this).
-# Returns any necessary row padding
+# Create the padding in order to bring up the length 
+# of the rows to a multiple of four bytes.
 def row_padding(width, colordepth):
-  
   byte_length = width*colordepth/8
   padding = (4-byte_length) % 4
   padbytes = ''
@@ -39,7 +37,6 @@ def row_padding(width, colordepth):
     x = struct.pack('<B',0)
     padbytes += x
   return padbytes
-
 
 # Accepts bytes: 0-255. Returns a packed string
 def pack_RGB(r, g, b):
@@ -128,7 +125,7 @@ def _loadFromSource(filename):
     b = f.read(4)                                       # Vrez = Y Pixel per meter
     b = f.read(4)                                       # Num colors in color table
     b = f.read(4)                                       # Num important colors (generally unused)
-   
+
   else:
     raise IOError("Unsupported bitmap header format")
   
@@ -141,12 +138,13 @@ def _loadFromSource(filename):
 
  
 # flipping the bitmapbuffer horizontal (cols, rows = W,H).
+# This might be bugged as i'm cheating...
 def flipBitmap(rawpix, cols, rows, depth=24):
-  size = rows*(cols*(depth/8))
   bpr = len(rawpix) / rows
+  size = len(rawpix)-(bpr/2)
   temp = []
   i = 0
-  while i < size:
+  while i < size: 
     temp.append(rawpix[i:i+bpr])
     i += bpr
   return "".join(reversed(temp))
@@ -156,9 +154,9 @@ def flipBitmap(rawpix, cols, rows, depth=24):
 #  
 class Bitmap(object):
   def __init__(self):
-    self.wd = -1;
-    self.ht = -1;
-    self.depth = 24;
+    self.wd = -1
+    self.ht = -1
+    self.depth = 24
     self.pixels = ''
     self.rawpix = ''
     self.bpr = 0
@@ -172,8 +170,8 @@ class Bitmap(object):
     if (mode not in MODE2BIT):
       raise SyntaxError("Unknown mode '%s'. Allowed modes: 'L', 'RGB' or 'RGBA'" % mode)
     self.depth = MODE2BIT[mode]
-    self.wd = int(ceil(width))
-    self.ht = int(ceil(height))
+    self.wd = int(width)
+    self.ht = int(height)
     
     bkgd = pack_RGB(bkgd[0],bkgd[1],bkgd[2])
     tmpdata = []
@@ -213,7 +211,7 @@ class Bitmap(object):
     self.pixels = array('c', self.rawpix)
     self.bpr = len(self.pixels) / self.ht
     self.initalized = True
-    
+
     
   # Save the bitmap to any location on the computer
   def save(self, filename):
@@ -240,8 +238,10 @@ class Bitmap(object):
   # Set color of pixel(x,y).
   # Appending packed color to array is quicker then appending to raw
   def setPixel(self, (x,y), c):
-    if 0 < self.wd > x and 0 < self.ht > y:
-      pos = (y*self.bpr) + (x*3)
+    if (0 <= x < self.wd) and (0 <= y < self.ht):
+      mdf = 3
+      if self.depth == 32: mdf = 4
+      pos = (y*self.bpr) + (x*mdf)
       pack = pack_RGB(c[0], c[1], c[2])
       self.pixels[pos] = pack[0]
       self.pixels[pos+1] = pack[1]
@@ -250,11 +250,13 @@ class Bitmap(object):
 
   # Get color of pixel(x,y) - reading from rawdata
   def getPixel(self, x,y):
-    if 0 < self.wd > x and 0 < self.ht > y:
-      pos = (y*self.bpr) + (x*3)
+    if (0 <= x < self.wd) and (0 <= y < self.ht):
+      mdf = 3
+      if self.depth == 32: mdf = 4
+      pos = (y*self.bpr) + (x*mdf)
       b,g,r = struct.unpack('<BBB', self.rawpix[pos:pos+3])
       return r,g,b
-
+      
       
   # Get all the colors from each pixel given
   def getPixels(self, seq):
@@ -275,6 +277,8 @@ class Bitmap(object):
   def size(self): return (self.wd, self.ht);
   def width(self): return self.wd;
   def height(self): return self.ht;
+  def _raw(self): return self.rawpix;
+  
   
   # I do not see why.. but okay. Let's just...
   def free(self):
@@ -283,6 +287,36 @@ class Bitmap(object):
     self.pixels = ''
     self.rawpix = ''
     gc.collect()
+  
+  ''' 
+   Cool and usefull functions goes bellow here!! 
+  '''
+  
+  # Resize the image using Nearest nabour
+  # This could MAY BE possible with just maipulating raw data...
+  def resize(self, newW, newH):
+    W, H = self.size()
+    factx = newW/float(W)
+    facty = newH/float(H)
+    if (factx,facty) == (1,1): return
+    new = Bitmap()
+    new.create(newW, newH)
+    for x in range(newW):
+      for y in range(newH):
+        p = self.getPixel(int(x/factx), int(y/facty))
+        new.setPixel((x,y), p)
+
+    new.writeData()
+    self.free()
+    self.depth = 24
+    self.rawpix = new._raw()
+    self.pixels = array('c', new._raw())
+    self.wd, self.ht = newW, newH
+    self.initalized = True
+    
+  def rescale(self, factor): 
+    W, H = self.size()
+    self.resize(int(W*factor), int(H*factor))
 
 # Take it for a spin..!
 if __name__ == '__main__':
