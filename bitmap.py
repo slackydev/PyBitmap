@@ -30,26 +30,28 @@ HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
 
 # Convert a image to a base64 string, wi'll just
 # print it out from here... 
-def ImageToString(image):
-    img = Bitmap()
-    img.open(image)
-    W, H = str(img.width()), str(img.height())
-    raw = img._raw()
-    encoded = base64.b64encode(raw)
-    i = 0
-    name = image.split(os.sep)[-1].split('.')[0]
-    print name + " = Bitmap()"
-    while i<len(encoded):
-      if i == 0:
-        col = 75 - len(name+".fromString(("+W+","+H+"), ") + 4
-        print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
-        i += col
-      elif i+75>=len(encoded):
-        print "\t'" + str(encoded[i:i+75]) + "')"
-        i += 75
-      else:
-        print "\t'" + str(encoded[i:i+75] +"' +") 
-        i += 75
+def ImageToString(filename):
+  if not(os.path.exists(filename)):
+    raise IOError("File '%s' does not exist" % filename)
+  img = Bitmap()
+  img.open(filename)
+  W, H = str(img.width()), str(img.height())
+  raw = img._raw()
+  encoded = base64.b64encode(raw)
+  i = 0
+  name = filename.split(os.sep)[-1].split('.')[0]
+  print name + " = Bitmap()"
+  while i<len(encoded):
+    if i == 0:
+      col = 75 - len(name+".fromString(("+W+","+H+"), ") + 4
+     print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
+      i += col
+    elif i+75>=len(encoded):
+      print "\t'" + str(encoded[i:i+75]) + "')"
+      i += 75
+    else:
+      print "\t'" + str(encoded[i:i+75] +"' +") 
+      i += 75
 
 
 # Create the padding in order to bring up the length 
