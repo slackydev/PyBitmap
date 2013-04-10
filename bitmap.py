@@ -44,7 +44,7 @@ def ImageToString(filename):
   while i<len(encoded):
     if i == 0:
       col = 75 - len(name+".fromString(("+W+","+H+"), ") + 4
-     print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
+      print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
       i += col
     elif i+75>=len(encoded):
       print "\t'" + str(encoded[i:i+75]) + "')"
