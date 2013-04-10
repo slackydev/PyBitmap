@@ -52,7 +52,7 @@ def ImageToString(filename):
     else:
       print "\t'" + str(encoded[i:i+75] +"' +") 
       i += 75
-
+      
 
 # Create the padding in order to bring up the length 
 # of the rows to a multiple of four bytes.
@@ -179,7 +179,7 @@ class Bitmap(object):
     
 
   # Create a new bitmap of the given size and background color
-  def create(self, width, height, mode='RGB', bkgd=(255,255,255)): 
+  def create(self, width, height, mode='RGB', bkgd=16777215): 
     if (width <= 0 and height <= 0):
       raise SyntaxError("Width and height must be positive")
     if (mode not in MODE2BIT):
@@ -187,9 +187,8 @@ class Bitmap(object):
     self.depth = MODE2BIT[mode]
     self.wd = int(width)
     self.ht = int(height)
-    bkgd = struct.pack('<BBB', bkgd[0] & 0xFF, 
-                              (bkgd[1] >> 8) & 0xFF, 
-                              (bkgd[2] >> 16) & 0xFF)
+    r,g,b = bkgd & 0xFF, (bkgd >> 8) & 0xFF, (bkgd >> 16) & 0xFF
+    bkgd = struct.pack('<BBB', b,g,r)
     tmpdata = []
     tmprow  = (bkgd * self.wd)
     padding = row_padding(self.wd, self.depth)
@@ -268,7 +267,7 @@ class Bitmap(object):
       mdf = 3
       if self.depth == 32: mdf = 4
       pos = (y*self.bpr) + (x*mdf)
-      pack = struct.pack('<BBB', c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF)
+      pack = struct.pack('<BBB', (c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF)
       self.pixels[pos] = pack[0]
       self.pixels[pos+1] = pack[1]
       self.pixels[pos+2] = pack[2]
@@ -291,7 +290,7 @@ class Bitmap(object):
     
   #Quick append color to a list of pixels  
   def setPixels(self, seq, clr, save=False):
-    pack = struct.pack('<BBB', clr & 0xFF, (clr >> 8) & 0xFF, (clr >> 16) & 0xFF)
+    pack = struct.pack('<BBB', (clr >> 16) & 0xFF, (clr >> 8) & 0xFF,clr & 0xFF)
     for (x,y) in seq: 
       pos = (y*self.bpr) + (x*3)
       self.pixels[pos] = pack[0]
@@ -351,7 +350,7 @@ class Bitmap(object):
 # Take it for a spin..!
 if __name__ == '__main__':
   bmp = Bitmap()
-  bmp.create(1000, 1000, 'RGB', bkgd=(20,100,240))
+  bmp.create(1000, 1000, 'RGB', bkgd=0)
   #bmp.open("test.bmp")
   
   W,H = bmp.size()
