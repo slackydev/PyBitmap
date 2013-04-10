@@ -16,7 +16,20 @@ import struct, sys, os
 from array import array
 import gc, base64
 
-''' Convert a image to a string '''
+# Compression types:
+CTYPES = {0: "BI_RGB", 1: "BI_RLE8", 2: "BI_RLE4", 3: "BI_BITFIELDS", 4: "BI_JPEG", 5: "BI_PNG"}
+
+# mode => bits and vice versa
+MODE2BIT = { "L":8, "RGB":24, "RGBA":32 }
+BIT2MODE = { 8:"L", 24:"RGB", 32:"RGBX"}
+
+#Qucik convert lookup for hex to rgb
+HEX  = '0123456789abcdef';
+HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
+
+
+# Convert a image to a base64 string, wi'll just
+# print it out from here... 
 def ImageToString(image):
     img = Bitmap()
     img.open(image)
@@ -28,9 +41,9 @@ def ImageToString(image):
     print name + " = Bitmap()"
     while i<len(encoded):
       if i == 0:
-         col = 75 - len(name+".fromString(("+W+","+H+"), ") + 4
-         print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
-         i += col
+        col = 75 - len(name+".fromString(("+W+","+H+"), ") + 4
+        print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
+        i += col
       elif i+75>=len(encoded):
         print "\t'" + str(encoded[i:i+75]) + "')"
         i += 75
@@ -38,17 +51,6 @@ def ImageToString(image):
         print "\t'" + str(encoded[i:i+75] +"' +") 
         i += 75
 
-
-# Compression types:
-CTYPES = {0: "BI_RGB", 1: "BI_RLE8", 2: "BI_RLE4", 3: "BI_BITFIELDS", 4: "BI_JPEG", 5: "BI_PNG"}
-
-# mode => bits and vice versa
-MODE2BIT = { "L":8, "RGB":24, "RGBA":32 }
-BIT2MODE = { 8:"L", 24:"RGB", 32:"RGBX"}
-
-#Qucik convert lookup for hex to rgb
-HEX  = '0123456789abcdef';
-HEX2 = dict((a+b, HEX.index(a)*16 + HEX.index(b)) for a in HEX for b in HEX);
 
 # Create the padding in order to bring up the length 
 # of the rows to a multiple of four bytes.
