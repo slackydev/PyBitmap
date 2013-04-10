@@ -14,7 +14,30 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 import struct, sys, os
 from array import array
-import gc
+import gc, base64
+
+''' Convert a image to a string '''
+def ImageToString(image):
+    img = Bitmap()
+    img.open(image)
+    W, H = str(img.width()), str(img.height())
+    raw = img._raw()
+    encoded = base64.b64encode(raw)
+    i = 0
+    name = image.split(os.sep)[-1].split('.')[0]
+    print name + " = Bitmap()"
+    while i<len(encoded):
+      if i == 0:
+         col = 75 - len(name+".fromString(("+W+","+H+"), ") + 4
+         print name + ".fromString(("+W+","+H+"), '" + str(encoded[i:i+col]) + "' +"
+         i += col
+      elif i+75>=len(encoded):
+        print "\t'" + str(encoded[i:i+75]) + "')"
+        i += 75
+      else:
+        print "\t'" + str(encoded[i:i+75] +"' +") 
+        i += 75
+
 
 # Compression types:
 CTYPES = {0: "BI_RGB", 1: "BI_RLE8", 2: "BI_RLE4", 3: "BI_BITFIELDS", 4: "BI_JPEG", 5: "BI_PNG"}
@@ -37,18 +60,6 @@ def row_padding(width, colordepth):
     x = struct.pack('<B',0)
     padbytes += x
   return padbytes
-
-# Accepts bytes: 0-255. Returns a packed string
-def pack_RGB(r, g, b):
-  return struct.pack('<BBB',b,g,r)
-
-# Pack with HEX? IE: 'AA6600'. Returns a packed string
-# This is unused right now.
-def pack_hex_color(hex_color):
-  hex_color = hex_color.lower()
-  r,g,b = (HEX2[hex_color[0:2]], HEX2[hex_color[2:4]], HEX2[hex_color[4:6]])
-  return pack_RGB(r, g, b)
-
   
 # Writing the binary bitmap header before saving
 # Windows Version 3 DIB Header specification
@@ -172,8 +183,9 @@ class Bitmap(object):
     self.depth = MODE2BIT[mode]
     self.wd = int(width)
     self.ht = int(height)
-    
-    bkgd = pack_RGB(bkgd[0],bkgd[1],bkgd[2])
+    bkgd = struct.pack('<BBB', bkgd[0] & 0xFF, 
+                              (bkgd[1] >> 8) & 0xFF, 
+                              (bkgd[2] >> 16) & 0xFF)
     tmpdata = []
     tmprow  = (bkgd * self.wd)
     padding = row_padding(self.wd, self.depth)
@@ -183,19 +195,6 @@ class Bitmap(object):
     self.pixels = array('c', self.rawpix)
     self.bpr = len(self.pixels) / self.ht
     self.initalized = True; 
-  
-  
-  # Create a bitmap from raw bitmap meteria
-  # EG: A windows buffer bitmap
-  def fromBuffer(self, rawpix, size, depth=24, reverse=True):
-    self.wd = size[0]
-    self.ht = size[1]
-    self.depth = depth 
-    if not reverse: self.rawpix = rawpix
-    else: self.rawpix = flipBitmap(rawpix, self.wd, self.ht, self.depth)
-    self.pixels = array('c', self.rawpix)
-    self.bpr = len(self.pixels) / self.ht
-    self.initalized = True
 
     
   # Open a bitmap using function: _loadFromSource
@@ -211,7 +210,30 @@ class Bitmap(object):
     self.pixels = array('c', self.rawpix)
     self.bpr = len(self.pixels) / self.ht
     self.initalized = True
+  
+  
+  # Create a bitmap from raw bitmap meteria
+  # EG: A windows buffer bitmap
+  def fromBuffer(self, rawpix, size, depth=24, reverse=True):
+    self.wd = size[0]
+    self.ht = size[1]
+    self.depth = depth 
+    if not reverse: self.rawpix = rawpix
+    else: self.rawpix = flipBitmap(rawpix, self.wd, self.ht, self.depth)
+    self.pixels = array('c', self.rawpix)
+    self.bpr = len(self.pixels) / self.ht
+    self.initalized = True
 
+  
+  # Create a bitmap from a base64 string
+  def fromString(self, size, encstr):
+    self.depth = 24
+    self.rawpix = base64.b64decode(encstr)
+    self.pixels = array('c', self.rawpix)
+    self.wd, self.ht = size[0], size[1]
+    self.bpr = len(self.pixels) / self.ht
+    self.initalized = True
+    
     
   # Save the bitmap to any location on the computer
   def save(self, filename):
@@ -234,7 +256,7 @@ class Bitmap(object):
     if self.initalized:
       self.pixels = array('c', self.rawpix)
       
-
+    
   # Set color of pixel(x,y).
   # Appending packed color to array is quicker then appending to raw
   def setPixel(self, (x,y), c):
@@ -242,21 +264,21 @@ class Bitmap(object):
       mdf = 3
       if self.depth == 32: mdf = 4
       pos = (y*self.bpr) + (x*mdf)
-      pack = pack_RGB(c[0], c[1], c[2])
+      pack = struct.pack('<BBB', c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF)
       self.pixels[pos] = pack[0]
       self.pixels[pos+1] = pack[1]
       self.pixels[pos+2] = pack[2]
 
 
   # Get color of pixel(x,y) - reading from rawdata
+  # No safeblock... speed is of the important!
   def getPixel(self, x,y):
-    if (0 <= x < self.wd) and (0 <= y < self.ht):
-      mdf = 3
-      if self.depth == 32: mdf = 4
-      pos = (y*self.bpr) + (x*mdf)
-      b,g,r = struct.unpack('<BBB', self.rawpix[pos:pos+3])
-      return r,g,b
-      
+    mdf = 3
+    if self.depth == 32: mdf = 4
+    pos = (y*self.bpr) + (x*mdf)
+    b,g,r = struct.unpack('<BBB', self.rawpix[pos:pos+3])
+    return r << 16 | g << 8 | b
+    
       
   # Get all the colors from each pixel given
   def getPixels(self, seq):
@@ -264,29 +286,31 @@ class Bitmap(object):
 
     
   #Quick append color to a list of pixels  
-  def setPixels(self, seq, color, save=False):
-    pack = pack_RGB(color[0], color[1], color[2])
+  def setPixels(self, seq, clr, save=False):
+    pack = struct.pack('<BBB', clr & 0xFF, (clr >> 8) & 0xFF, (clr >> 16) & 0xFF)
     for (x,y) in seq: 
       pos = (y*self.bpr) + (x*3)
       self.pixels[pos] = pack[0]
       self.pixels[pos+1] = pack[1]
       self.pixels[pos+2] = pack[2]
-    if save: self.writeData()
+    if save: self.writeData() 
     
-  # Stuff for getting dimensions
+   
+  # Stuff for getting dimensions, and data
   def size(self): return (self.wd, self.ht);
   def width(self): return self.wd;
   def height(self): return self.ht;
   def _raw(self): return self.rawpix;
   
   
-  # I do not see why.. but okay. Let's just...
+  # Might just come in handy to keep memory clear...
   def free(self):
     W = H = -1
     self.initalized = False
     self.pixels = ''
     self.rawpix = ''
     gc.collect()
+  
   
   ''' 
    Cool and usefull functions goes bellow here!! 
@@ -312,11 +336,13 @@ class Bitmap(object):
     self.rawpix = new._raw()
     self.pixels = array('c', new._raw())
     self.wd, self.ht = newW, newH
+    self.bpr = len(self.pixels) / self.ht
     self.initalized = True
     
   def rescale(self, factor): 
     W, H = self.size()
     self.resize(int(W*factor), int(H*factor))
+    
 
 # Take it for a spin..!
 if __name__ == '__main__':
